@@ -7,8 +7,12 @@
 const fs = require("fs");
 const path = require("path");
 const chalk = require("chalk");
+// const jsdom = require("jsdom");
+// const { JSDOM } = jsdom;
+const render = require("./render");
 
 const forbiddenDirs = ["node_modules"];
+// Not going to look up and test this files.
 
 class Runner {
   constructor() {
@@ -16,26 +20,28 @@ class Runner {
   }
 
   async runTests() {
+    const beforeEaches = [];
+
+    global.beforeEach = (fn) => {
+      beforeEaches.push(fn);
+    };
+
+    global.render = render;
+
+    global.it = async (desc, fn) => {
+      beforeEaches.forEach((func) => func());
+
+      try {
+        await fn();
+        console.log("✨✨✨✨", chalk.green(desc), "✨✨✨✨");
+      } catch (err) {
+        console.log("💥💥💥💥", chalk.red(desc), "💥💥💥💥");
+        console.log("🚩", "\t", chalk.red(err.message));
+      }
+    };
+
     for (let file of this.testFiles) {
       console.log(chalk.grey(`---- ${file.shortName}`));
-
-      const beforeEaches = [];
-
-      global.beforeEach = (fn) => {
-        beforeEaches.push(fn);
-      };
-
-      global.it = (desc, fn) => {
-        beforeEaches.forEach((func) => func());
-
-        try {
-          fn();
-          console.log("✨✨✨✨", chalk.green(desc), "✨✨✨✨");
-        } catch (err) {
-          console.log("💥💥💥💥", chalk.red(desc), "💥💥💥💥");
-          console.log("🚩", "\t", chalk.red(err.message));
-        }
-      };
 
       try {
         require(file.name);
